@@ -13,15 +13,14 @@ int main() {
 
   const std::vector<std::vector<int>> world_map {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 2, 0, 3, 3, 0, 0, 0, 1},
+    {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
     {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+    {1, 0, 0, 0, 3, 0, 0, 0, 0, 1},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
   };
 
@@ -157,7 +156,7 @@ int main() {
         pos_x += dir_x * move_speed;
       }
 
-      if (world_map[static_cast<int>(pos_y)][static_cast<int>(pos_y + dir_y * move_speed)] == 0) {
+      if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y + dir_y * move_speed)] == 0) {
         pos_y += dir_y * move_speed;
       }
     }
@@ -167,7 +166,7 @@ int main() {
         pos_x -= dir_x * move_speed;
       }
 
-      if (world_map[static_cast<int>(pos_y)][static_cast<int>(pos_y - dir_y * move_speed)] == 0) {
+      if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y - dir_y * move_speed)] == 0) {
         pos_y -= dir_y * move_speed;
       }
     }
