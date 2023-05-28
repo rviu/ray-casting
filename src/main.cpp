@@ -5,25 +5,72 @@
 
 #include "quickcg.h"
 
+const int map_width = 10;
+const int map_height = 10;
+const int screen_width = 640;
+const int screen_height = 480;
+
+const std::vector<std::vector<int>> world_map {
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+  {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 2, 0, 3, 3, 0, 0, 0, 1},
+  {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 3, 0, 0, 0, 0, 1},
+  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+};
+
+void draw_line(
+    double perp_wall_dist,
+    int hit_side,
+    int map_pos_x,
+    int map_pos_y,
+    int x
+  ) {
+
+  int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
+
+  int draw_start = -line_height / 2 + QuickCG::h / 2;
+  if (draw_start < 0) {
+    draw_start = 0;
+  }
+
+  int draw_end = line_height / 2 + QuickCG::h / 2;
+  if (draw_end >= QuickCG::h) {
+    draw_end = QuickCG::h - 1;
+  }
+
+  QuickCG::ColorRGB color;
+
+  switch (world_map[map_pos_x][map_pos_y]) {
+    case 1:
+      color = QuickCG::RGB_Red;
+      break;
+    case 2:
+      color = QuickCG::RGB_Green;
+      break;
+    case 3:
+      color = QuickCG::RGB_Blue;
+      break;
+    case 4:
+      color = QuickCG::RGB_White;
+      break;
+    default:
+      color = QuickCG::RGB_Yellow;
+      break;
+  }
+
+  if (hit_side == 1) {
+    color = color / 2;
+  }
+
+  QuickCG::verLine(x, draw_start, draw_end, color);
+}
+
 int main() {
-  const int map_width = 10;
-  const int map_height = 10;
-  const int screen_width = 640;
-  const int screen_height = 480;
-
-  const std::vector<std::vector<int>> world_map {
-    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-    {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 2, 0, 3, 3, 0, 0, 0, 1},
-    {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
-    {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
-    {1, 0, 0, 0, 3, 0, 0, 0, 0, 1},
-    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-  };
-
   double pos_x = 5;
   double pos_y = 5;
   double dir_x = -1;
@@ -38,7 +85,7 @@ int main() {
 
   while (!QuickCG::done()) {
     for (int x = 0; x < QuickCG::w; x++) {
-      double camera_x = 2 * x / double(QuickCG::w) - 1;
+      double camera_x = 2 * x / static_cast<double>(QuickCG::w) - 1;
 
       double ray_dir_x = dir_x + plane_x * camera_x;
       double ray_dir_y = dir_y + plane_y * camera_x;
@@ -98,43 +145,13 @@ int main() {
         perp_wall_dist = next_side_dist_y - delta_dist_y;
       }
 
-      int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
-
-      int draw_start = -line_height / 2 + QuickCG::h / 2;
-      if (draw_start < 0) {
-        draw_start = 0;
-      }
-
-      int draw_end = line_height / 2 + QuickCG::h / 2;
-      if (draw_end >= QuickCG::h) {
-        draw_end = QuickCG::h - 1;
-      }
-
-      QuickCG::ColorRGB color;
-
-      switch (world_map[map_pos_x][map_pos_y]) {
-        case 1:
-          color = QuickCG::RGB_Red;
-          break;
-        case 2:
-          color = QuickCG::RGB_Green;
-          break;
-        case 3:
-          color = QuickCG::RGB_Blue;
-          break;
-        case 4:
-          color = QuickCG::RGB_White;
-          break;
-        default:
-          color = QuickCG::RGB_Yellow;
-          break;
-      }
-
-      if (hit_side == 1) {
-        color = color / 2;
-      }
-
-      QuickCG::verLine(x, draw_start, draw_end, color);
+      draw_line(
+        perp_wall_dist,
+        hit_side,
+        map_pos_x,
+        map_pos_y,
+        x
+      );
     }
 
     prev_time = cur_time;
@@ -146,8 +163,8 @@ int main() {
     QuickCG::redraw();
     QuickCG::cls();
 
-    double move_speed = frame_time * 5.0;
-    double rot_speed = frame_time * 3.0;
+    double move_speed = frame_time * 3.0;
+    double rot_speed = frame_time * 1.0;
 
     QuickCG::readKeys();
 
