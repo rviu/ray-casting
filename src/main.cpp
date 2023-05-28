@@ -38,5 +38,107 @@ int main() {
   QuickCG::screen(screen_width, screen_height, 0, "ray-casting");
 
   while (!QuickCG::done()) {
+    for (int x = 0; x < QuickCG::w; x++) {
+      double camera_x = 2 * x / double(QuickCG::w) - 1;
+
+      double ray_dir_x = dir_x + plane_x * camera_x;
+      double ray_dir_y = dir_y + plane_y * camera_x;
+
+      int map_pos_x = static_cast<int>(pos_x);
+      int map_pos_y = static_cast<int>(pos_y);
+
+      double next_side_dist_x;
+      double next_side_dist_y;
+
+      double delta_dist_x = std::abs(1 / ray_dir_x);
+      double delta_dist_y = std::abs(1 / ray_dir_y);
+
+      double perp_wall_dist;
+
+      int step_dir_x;
+      int step_dir_y;
+
+      bool hit = false;
+      int hit_side;
+
+      if (ray_dir_x < 0) {
+        step_dir_x = -1;
+        next_side_dist_x = (pos_x - map_pos_x) * delta_dist_x;
+      } else {
+        step_dir_x = 1;
+        next_side_dist_x = (map_pos_x + 1.0 - pos_x) * delta_dist_x;
+      }
+
+      if (ray_dir_y < 0) {
+        step_dir_y = -1;
+        next_side_dist_y = (pos_y - map_pos_y) * delta_dist_y;
+      } else {
+        step_dir_y = 1;
+        next_side_dist_y = (map_pos_y + 1.0 - pos_y) * delta_dist_y;
+      }
+
+      while (hit == false) {
+        if (next_side_dist_x < next_side_dist_y) {
+          next_side_dist_x += delta_dist_x;
+          map_pos_x += step_dir_x;
+          hit_side = 0;
+        } else {
+          next_side_dist_y += delta_dist_y;
+          map_pos_y += step_dir_y;
+          hit_side = 1;
+        }
+
+        if (world_map[map_pos_x][map_pos_y] > 0) {
+          hit = true;
+        }
+      }
+
+      if (hit_side == 0) {
+        perp_wall_dist = next_side_dist_x - delta_dist_x;
+      } else {
+        perp_wall_dist = next_side_dist_y - delta_dist_y;
+      }
+
+      int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
+
+      int draw_start = -line_height / 2 + QuickCG::h / 2;
+      if (draw_start < 0) {
+        draw_start = 0;
+      }
+
+      int draw_end = line_height / 2 + QuickCG::h / 2;
+      if (draw_end >= QuickCG::h) {
+        draw_end = QuickCG::h - 1;
+      }
+
+      QuickCG::ColorRGB color;
+
+      switch (world_map[map_pos_x][map_pos_y]) {
+        case 1:
+          color = QuickCG::RGB_Red;
+          break;
+        case 2:
+          color = QuickCG::RGB_Green;
+          break;
+        case 3:
+          color = QuickCG::RGB_Blue;
+          break;
+        case 4:
+          color = QuickCG::RGB_White;
+          break;
+        default:
+          color = QuickCG::RGB_Yellow;
+          break;
+      }
+
+      if (hit_side == 1) {
+        color = color / 2;
+      }
+
+      QuickCG::verLine(x, draw_start, draw_end, color);
+    }
+
+    QuickCG::redraw();
+    QuickCG::cls();
   }
 }
