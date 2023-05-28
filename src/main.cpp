@@ -138,7 +138,58 @@ int main() {
       QuickCG::verLine(x, draw_start, draw_end, color);
     }
 
+    prev_time = cur_time;
+    cur_time = QuickCG::getTicks();
+
+    double frame_time = (cur_time - prev_time) / 1000.0;
+    QuickCG::print(1.0 / frame_time);
+
     QuickCG::redraw();
     QuickCG::cls();
+
+    double move_speed = frame_time * 5.0;
+    double rot_speed = frame_time * 3.0;
+
+    QuickCG::readKeys();
+
+    if (QuickCG::keyDown(SDLK_w)) {
+      if (world_map[static_cast<int>(pos_x + dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
+        pos_x += dir_x * move_speed;
+      }
+
+      if (world_map[static_cast<int>(pos_y)][static_cast<int>(pos_y + dir_y * move_speed)] == 0) {
+        pos_y += dir_y * move_speed;
+      }
+    }
+
+    if (QuickCG::keyDown(SDLK_s)) {
+      if (world_map[static_cast<int>(pos_x - dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
+        pos_x -= dir_x * move_speed;
+      }
+
+      if (world_map[static_cast<int>(pos_y)][static_cast<int>(pos_y - dir_y * move_speed)] == 0) {
+        pos_y -= dir_y * move_speed;
+      }
+    }
+
+    if (QuickCG::keyDown(SDLK_a)) {
+      double prev_dir_x = dir_x;
+      dir_x = dir_x * std::cos(rot_speed) - dir_y * std::sin(rot_speed);
+      dir_y = prev_dir_x * std::sin(rot_speed) + dir_y * std::cos(rot_speed);
+
+      double prev_plane_x = plane_x;
+      plane_x = plane_x * std::cos(rot_speed) - plane_y * std::sin(rot_speed);
+      plane_y = prev_plane_x * std::sin(rot_speed) + plane_y * std::cos(rot_speed);
+    }
+
+    if (QuickCG::keyDown(SDLK_d)) {
+      double prev_dir_x = dir_x;
+      dir_x = dir_x * std::cos(-rot_speed) - dir_y * std::sin(-rot_speed);
+      dir_y = prev_dir_x * std::sin(-rot_speed) + dir_y * std::cos(-rot_speed);
+
+      double prev_plane_x = plane_x;
+      plane_x = plane_x * std::cos(-rot_speed) - plane_y * std::sin(-rot_speed);
+      plane_y = prev_plane_x * std::sin(-rot_speed) + plane_y * std::cos(-rot_speed);
+    }
   }
 }
