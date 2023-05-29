@@ -45,6 +45,8 @@ int main() {
 
   QuickCG::screen(screen_width, screen_height, 0, "ray-casting");
 
+  /*
+  // Generated textures
   for (int x = 0; x < tex_width; x++) {
     for (int y = 0; y < tex_height; y++) {
       int y_color = y * 256 / tex_height;
@@ -57,6 +59,14 @@ int main() {
       texture[3][tex_width * y + x] = 256 * xor_color;
     }
   }
+  */
+
+  // Textures from images
+  unsigned long tw, th;
+  QuickCG::loadImage(texture[0], tw, th, "textures/greystone.png");
+  QuickCG::loadImage(texture[1], tw, th, "textures/redbrick.png");
+  QuickCG::loadImage(texture[2], tw, th, "textures/purplestone.png");
+  QuickCG::loadImage(texture[3], tw, th, "textures/colorstone.png");
 
   while (!QuickCG::done()) {
     for (int x = 0; x < QuickCG::w; x++) {
