@@ -9,6 +9,8 @@ const int map_width = 10;
 const int map_height = 10;
 const int screen_width = 640;
 const int screen_height = 480;
+const int tex_width = 64;
+const int tex_height = 64;
 
 const std::vector<std::vector<int>> world_map {
   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -16,59 +18,14 @@ const std::vector<std::vector<int>> world_map {
   {1, 0, 2, 0, 3, 3, 0, 0, 0, 1},
   {1, 0, 2, 0, 0, 0, 0, 0, 0, 1},
   {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
-  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
-  {1, 0, 0, 0, 0, 0, 0, 3, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 4, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 4, 0, 1},
+  {1, 0, 0, 0, 0, 0, 0, 4, 0, 1},
   {1, 0, 0, 0, 3, 0, 0, 0, 0, 1},
   {1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 };
 
-void draw_line(
-    double perp_wall_dist,
-    int hit_side,
-    int map_pos_x,
-    int map_pos_y,
-    int x
-  ) {
-
-  int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
-
-  int draw_start = -line_height / 2 + QuickCG::h / 2;
-  if (draw_start < 0) {
-    draw_start = 0;
-  }
-
-  int draw_end = line_height / 2 + QuickCG::h / 2;
-  if (draw_end >= QuickCG::h) {
-    draw_end = QuickCG::h - 1;
-  }
-
-  QuickCG::ColorRGB color;
-
-  switch (world_map[map_pos_x][map_pos_y]) {
-    case 1:
-      color = QuickCG::RGB_Red;
-      break;
-    case 2:
-      color = QuickCG::RGB_Green;
-      break;
-    case 3:
-      color = QuickCG::RGB_Blue;
-      break;
-    case 4:
-      color = QuickCG::RGB_White;
-      break;
-    default:
-      color = QuickCG::RGB_Yellow;
-      break;
-  }
-
-  if (hit_side == 1) {
-    color = color / 2;
-  }
-
-  QuickCG::verLine(x, draw_start, draw_end, color);
-}
+unsigned int buffer[screen_height][screen_width];
 
 int main() {
   double pos_x = 5;
@@ -81,7 +38,25 @@ int main() {
   double cur_time = 0;
   double prev_time = 0;
 
+  std::vector<unsigned int> texture[4];
+  for (int i = 0; i < 4; i++) {
+    texture[i].resize(tex_width * tex_height);
+  }
+
   QuickCG::screen(screen_width, screen_height, 0, "ray-casting");
+
+  for (int x = 0; x < tex_width; x++) {
+    for (int y = 0; y < tex_height; y++) {
+      int y_color = y * 256 / tex_height;
+      int xy_color = y * 128 / tex_height + x * 128 / tex_width;
+      int xor_color = (x * 256 / tex_width) ^ (y * 256 / tex_height);
+
+      texture[0][tex_width * y + x] = 65536 * 254 * (x != y && x != tex_width - y);
+      texture[1][tex_width * y + x] = 256 * xy_color + 65536 * xy_color;
+      texture[2][tex_width * y + x] = 65536 * 192 * (x % 16 && y % 16);
+      texture[3][tex_width * y + x] = 256 * xor_color;
+    }
+  }
 
   while (!QuickCG::done()) {
     for (int x = 0; x < QuickCG::w; x++) {
@@ -145,13 +120,57 @@ int main() {
         perp_wall_dist = next_side_dist_y - delta_dist_y;
       }
 
-      draw_line(
-        perp_wall_dist,
-        hit_side,
-        map_pos_x,
-        map_pos_y,
-        x
-      );
+      int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
+
+      int pitch = 0;
+
+      int draw_start = -line_height / 2 + QuickCG::h / 2;
+      if (draw_start < 0) {
+        draw_start = 0;
+      }
+
+      int draw_end = line_height / 2 + QuickCG::h / 2;
+      if (draw_end >= QuickCG::h) {
+        draw_end = QuickCG::h - 1;
+      }
+
+      int tex_num = world_map[map_pos_x][map_pos_y] -1;
+
+      double wall_x;
+
+      if (hit_side == 0) {
+        wall_x = pos_y + perp_wall_dist * ray_dir_y;
+      } else {
+        wall_x = pos_x + perp_wall_dist * ray_dir_x;
+      }
+
+      wall_x -= floor((wall_x));
+
+      int tex_x = static_cast<int>(wall_x * double(tex_width));
+      if (hit_side == 0 && ray_dir_x > 0) tex_x = tex_width - tex_x - 1;
+      if (hit_side == 1 && ray_dir_y < 0) tex_x = tex_width - tex_x - 1;
+
+      double step = 1.0 * tex_height / line_height;
+      double tex_pos = (draw_start - pitch - QuickCG::h / 2 + line_height / 2) * step;
+
+      for (int y = draw_start; y < draw_end; y++) {
+        int tex_y = static_cast<int>(tex_pos) & (tex_height - 1);
+        tex_pos += step;
+        unsigned int color = texture[tex_num][tex_height * tex_y + tex_x];
+
+        if (hit_side == 1) {
+          color = (color >> 1) & 8355711;
+        }
+
+        buffer[y][x] = color;
+      }
+    }
+
+    QuickCG::drawBuffer(buffer[0]);
+    for (int y = 0; y < QuickCG::h; y++) {
+      for (int x = 0; x < QuickCG::w; x++) {
+        buffer[y][x] = 0;
+      }
     }
 
     prev_time = cur_time;
@@ -161,10 +180,9 @@ int main() {
     QuickCG::print(1.0 / frame_time);
 
     QuickCG::redraw();
-    QuickCG::cls();
 
     double move_speed = frame_time * 3.0;
-    double rot_speed = frame_time * 1.0;
+    double rot_speed = frame_time * 2.0;
 
     QuickCG::readKeys();
 
