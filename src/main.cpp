@@ -27,46 +27,156 @@ const std::vector<std::vector<int>> world_map {
 
 unsigned int buffer[screen_height][screen_width];
 
-int main() {
-  double pos_x = 5;
-  double pos_y = 5;
-  double dir_x = -1;
-  double dir_y = 0;
-  double plane_x = 0;
-  double plane_y = 0.66;
+double pos_x = 5;
+double pos_y = 5;
+double dir_x = -1;
+double dir_y = 0;
+double plane_x = 0;
+double plane_y = 0.66;
 
-  double cur_time = 0;
-  double prev_time = 0;
+double cur_time = 0;
+double prev_time = 0;
 
-  std::vector<unsigned int> texture[4];
+std::vector<unsigned int> texture[4];
+
+void calc_buffer_x(
+    double perp_wall_dist,
+    double map_pos_x,
+    double map_pos_y,
+    double ray_dir_x,
+    double ray_dir_y,
+    int hit_side,
+    int x
+  ) {
+
+  int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
+
+  int pitch = 0;
+
+  int draw_start = -line_height / 2 + QuickCG::h / 2;
+  if (draw_start < 0) {
+    draw_start = 0;
+  }
+
+  int draw_end = line_height / 2 + QuickCG::h / 2;
+  if (draw_end >= QuickCG::h) {
+    draw_end = QuickCG::h - 1;
+  }
+
+  int tex_num = world_map[map_pos_x][map_pos_y] -1;
+
+  double wall_x;
+
+  if (hit_side == 0) {
+    wall_x = pos_y + perp_wall_dist * ray_dir_y;
+  } else {
+    wall_x = pos_x + perp_wall_dist * ray_dir_x;
+  }
+
+  wall_x -= floor((wall_x));
+
+  int tex_x = static_cast<int>(wall_x * double(tex_width));
+  if (hit_side == 0 && ray_dir_x > 0) tex_x = tex_width - tex_x - 1;
+  if (hit_side == 1 && ray_dir_y < 0) tex_x = tex_width - tex_x - 1;
+
+  double step = 1.0 * tex_height / line_height;
+  double tex_pos = (draw_start - pitch - QuickCG::h / 2 + line_height / 2) * step;
+
+  for (int y = draw_start; y < draw_end; y++) {
+    int tex_y = static_cast<int>(tex_pos) & (tex_height - 1);
+    tex_pos += step;
+    unsigned int color = texture[tex_num][tex_height * tex_y + tex_x];
+
+    if (hit_side == 1) {
+      color = (color >> 1) & 8355711;
+    }
+
+    buffer[y][x] = color;
+  }
+}
+
+void generate_texture() {
   for (int i = 0; i < 4; i++) {
     texture[i].resize(tex_width * tex_height);
   }
 
-  QuickCG::screen(screen_width, screen_height, 0, "ray-casting");
+  bool use_img_tex = true;
 
-  /*
-  // Generated textures
-  for (int x = 0; x < tex_width; x++) {
-    for (int y = 0; y < tex_height; y++) {
-      int y_color = y * 256 / tex_height;
-      int xy_color = y * 128 / tex_height + x * 128 / tex_width;
-      int xor_color = (x * 256 / tex_width) ^ (y * 256 / tex_height);
+  if (use_img_tex == true) {
+    // Textures from images
+    unsigned long tw, th;
+    QuickCG::loadImage(texture[0], tw, th, "textures/greystone.png");
+    QuickCG::loadImage(texture[1], tw, th, "textures/redbrick.png");
+    QuickCG::loadImage(texture[2], tw, th, "textures/purplestone.png");
+    QuickCG::loadImage(texture[3], tw, th, "textures/colorstone.png");
+  } else {
+    // Generated textures
+    for (int x = 0; x < tex_width; x++) {
+      for (int y = 0; y < tex_height; y++) {
+        int y_color = y * 256 / tex_height;
+        int xy_color = y * 128 / tex_height + x * 128 / tex_width;
+        int xor_color = (x * 256 / tex_width) ^ (y * 256 / tex_height);
 
-      texture[0][tex_width * y + x] = 65536 * 254 * (x != y && x != tex_width - y);
-      texture[1][tex_width * y + x] = 256 * xy_color + 65536 * xy_color;
-      texture[2][tex_width * y + x] = 65536 * 192 * (x % 16 && y % 16);
-      texture[3][tex_width * y + x] = 256 * xor_color;
+        texture[0][tex_width * y + x] = 65536 * 254 * (x != y && x != tex_width - y);
+        texture[1][tex_width * y + x] = 256 * xy_color + 65536 * xy_color;
+        texture[2][tex_width * y + x] = 65536 * 192 * (x % 16 && y % 16);
+        texture[3][tex_width * y + x] = 256 * xor_color;
+      }
     }
   }
-  */
+}
 
-  // Textures from images
-  unsigned long tw, th;
-  QuickCG::loadImage(texture[0], tw, th, "textures/greystone.png");
-  QuickCG::loadImage(texture[1], tw, th, "textures/redbrick.png");
-  QuickCG::loadImage(texture[2], tw, th, "textures/purplestone.png");
-  QuickCG::loadImage(texture[3], tw, th, "textures/colorstone.png");
+void process_input(double frame_time) {
+  double move_speed = frame_time * 3.0;
+  double rot_speed = frame_time * 2.0;
+
+  QuickCG::readKeys();
+
+  if (QuickCG::keyDown(SDLK_w)) {
+    if (world_map[static_cast<int>(pos_x + dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
+      pos_x += dir_x * move_speed;
+    }
+
+    if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y + dir_y * move_speed)] == 0) {
+      pos_y += dir_y * move_speed;
+    }
+  }
+
+  if (QuickCG::keyDown(SDLK_s)) {
+    if (world_map[static_cast<int>(pos_x - dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
+      pos_x -= dir_x * move_speed;
+    }
+
+    if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y - dir_y * move_speed)] == 0) {
+      pos_y -= dir_y * move_speed;
+    }
+  }
+
+  if (QuickCG::keyDown(SDLK_a)) {
+    double prev_dir_x = dir_x;
+    dir_x = dir_x * std::cos(rot_speed) - dir_y * std::sin(rot_speed);
+    dir_y = prev_dir_x * std::sin(rot_speed) + dir_y * std::cos(rot_speed);
+
+    double prev_plane_x = plane_x;
+    plane_x = plane_x * std::cos(rot_speed) - plane_y * std::sin(rot_speed);
+    plane_y = prev_plane_x * std::sin(rot_speed) + plane_y * std::cos(rot_speed);
+  }
+
+  if (QuickCG::keyDown(SDLK_d)) {
+    double prev_dir_x = dir_x;
+    dir_x = dir_x * std::cos(-rot_speed) - dir_y * std::sin(-rot_speed);
+    dir_y = prev_dir_x * std::sin(-rot_speed) + dir_y * std::cos(-rot_speed);
+
+    double prev_plane_x = plane_x;
+    plane_x = plane_x * std::cos(-rot_speed) - plane_y * std::sin(-rot_speed);
+    plane_y = prev_plane_x * std::sin(-rot_speed) + plane_y * std::cos(-rot_speed);
+  }
+}
+
+int main() {
+  QuickCG::screen(screen_width, screen_height, 0, "ray-casting");
+
+  generate_texture();
 
   while (!QuickCG::done()) {
     for (int x = 0; x < QuickCG::w; x++) {
@@ -130,50 +240,15 @@ int main() {
         perp_wall_dist = next_side_dist_y - delta_dist_y;
       }
 
-      int line_height = static_cast<int>(QuickCG::h / perp_wall_dist);
-
-      int pitch = 0;
-
-      int draw_start = -line_height / 2 + QuickCG::h / 2;
-      if (draw_start < 0) {
-        draw_start = 0;
-      }
-
-      int draw_end = line_height / 2 + QuickCG::h / 2;
-      if (draw_end >= QuickCG::h) {
-        draw_end = QuickCG::h - 1;
-      }
-
-      int tex_num = world_map[map_pos_x][map_pos_y] -1;
-
-      double wall_x;
-
-      if (hit_side == 0) {
-        wall_x = pos_y + perp_wall_dist * ray_dir_y;
-      } else {
-        wall_x = pos_x + perp_wall_dist * ray_dir_x;
-      }
-
-      wall_x -= floor((wall_x));
-
-      int tex_x = static_cast<int>(wall_x * double(tex_width));
-      if (hit_side == 0 && ray_dir_x > 0) tex_x = tex_width - tex_x - 1;
-      if (hit_side == 1 && ray_dir_y < 0) tex_x = tex_width - tex_x - 1;
-
-      double step = 1.0 * tex_height / line_height;
-      double tex_pos = (draw_start - pitch - QuickCG::h / 2 + line_height / 2) * step;
-
-      for (int y = draw_start; y < draw_end; y++) {
-        int tex_y = static_cast<int>(tex_pos) & (tex_height - 1);
-        tex_pos += step;
-        unsigned int color = texture[tex_num][tex_height * tex_y + tex_x];
-
-        if (hit_side == 1) {
-          color = (color >> 1) & 8355711;
-        }
-
-        buffer[y][x] = color;
-      }
+      calc_buffer_x(
+        perp_wall_dist,
+        map_pos_x,
+        map_pos_y,
+        ray_dir_x,
+        ray_dir_y,
+        hit_side,
+        x
+      );
     }
 
     QuickCG::drawBuffer(buffer[0]);
@@ -191,49 +266,6 @@ int main() {
 
     QuickCG::redraw();
 
-    double move_speed = frame_time * 3.0;
-    double rot_speed = frame_time * 2.0;
-
-    QuickCG::readKeys();
-
-    if (QuickCG::keyDown(SDLK_w)) {
-      if (world_map[static_cast<int>(pos_x + dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
-        pos_x += dir_x * move_speed;
-      }
-
-      if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y + dir_y * move_speed)] == 0) {
-        pos_y += dir_y * move_speed;
-      }
-    }
-
-    if (QuickCG::keyDown(SDLK_s)) {
-      if (world_map[static_cast<int>(pos_x - dir_x * move_speed)][static_cast<int>(pos_y)] == 0) {
-        pos_x -= dir_x * move_speed;
-      }
-
-      if (world_map[static_cast<int>(pos_x)][static_cast<int>(pos_y - dir_y * move_speed)] == 0) {
-        pos_y -= dir_y * move_speed;
-      }
-    }
-
-    if (QuickCG::keyDown(SDLK_a)) {
-      double prev_dir_x = dir_x;
-      dir_x = dir_x * std::cos(rot_speed) - dir_y * std::sin(rot_speed);
-      dir_y = prev_dir_x * std::sin(rot_speed) + dir_y * std::cos(rot_speed);
-
-      double prev_plane_x = plane_x;
-      plane_x = plane_x * std::cos(rot_speed) - plane_y * std::sin(rot_speed);
-      plane_y = prev_plane_x * std::sin(rot_speed) + plane_y * std::cos(rot_speed);
-    }
-
-    if (QuickCG::keyDown(SDLK_d)) {
-      double prev_dir_x = dir_x;
-      dir_x = dir_x * std::cos(-rot_speed) - dir_y * std::sin(-rot_speed);
-      dir_y = prev_dir_x * std::sin(-rot_speed) + dir_y * std::cos(-rot_speed);
-
-      double prev_plane_x = plane_x;
-      plane_x = plane_x * std::cos(-rot_speed) - plane_y * std::sin(-rot_speed);
-      plane_y = prev_plane_x * std::sin(-rot_speed) + plane_y * std::cos(-rot_speed);
-    }
+    process_input(frame_time);
   }
 }
