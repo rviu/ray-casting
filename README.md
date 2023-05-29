@@ -54,6 +54,7 @@ This will open the world in a new window.
 ## Credits
 
 [_Lode's Computer Graphics Tutorial: Raycasting_](https://lodev.org/cgtutor/raycasting.html)
+
 [_QuickCG_](https://lodev.org/quickcg/)
 
 ## License
